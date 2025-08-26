@@ -2,38 +2,41 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- Mobilde yakınlaştırmayı kullanıcı başlatmasın, çift-tık zoom butonları etkilemesin -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Saloon N&N Beauty Game</title>
   <style>
     :root {
-      --mint:#4ecdc4;
-      --mint-dark:#44a08d;
-      --bg1:#1a1a2e; --bg2:#16213e;
-      --text:#fff; --muted:#bbb;
-      --danger:#ff6b6b;
-      --panel:#1a1a2e;
+      --mint:#4ecdc4; --mint-dark:#44a08d;
+      --bg1:#1a1a2e; --bg2:#16213e; --panel:#1a1a2e;
+      --text:#fff; --muted:#bbb; --danger:#ff6b6b;
     }
     * { box-sizing: border-box; }
-    body {
+    html, body {
       margin:0; padding:0;
       background: linear-gradient(135deg, var(--bg1), var(--bg2));
       font-family: Arial, sans-serif; color: var(--text);
       display:flex; flex-direction:column; align-items:center; justify-content:center;
-      min-height:100vh; overflow-x:hidden;
+      min-height:100vh;
     }
+
     .game-container { text-align:center; padding:20px; max-width:95vw; }
     .logo { font-size:2rem; font-weight:bold; margin-bottom:6px; letter-spacing:1px; }
     .nn { color: var(--mint); }
+
     .game-info {
       display:flex; justify-content:space-around; gap:8px; margin:10px 0; font-size:1rem; font-weight:bold;
     }
     .info-item { background: rgba(78,205,196,.2); padding:5px 10px; border-radius:10px; border:2px solid var(--mint); }
+
+    /* Canvas: sadece oyun alanında zoom/pinch kapalı */
     #gameCanvas {
       border:3px solid var(--mint); border-radius:10px; background:#000;
       display:block; margin:12px auto; width:90vw; max-width:420px; height:auto;
       aspect-ratio: 400 / 250;
-      touch-action:none;
+      touch-action: none; /* sadece canvas'ta kapalı */
     }
+
     .controls {
       display:grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr;
       gap:10px; max-width:180px; margin:12px auto;
@@ -42,18 +45,22 @@
       width:52px; height:52px; background:var(--mint); border:none; border-radius:50%;
       color:#000; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:bold;
       box-shadow: 0 4px 12px rgba(0,0,0,.25);
+      touch-action: manipulation; /* butonda double-tap zoom yok, tıklama normal */
     }
     .btn:active { background: var(--mint-dark); transform: translateY(1px); }
     .up { grid-column:2; grid-row:1; } .left { grid-column:1; grid-row:2; }
     .right { grid-column:3; grid-row:2; } .down { grid-column:2; grid-row:3; }
+
+    .logo-center { grid-column:2; grid-row:2; display:flex; align-items:center; justify-content:center; }
+    .logo-center img { max-width:45px; max-height:45px; border-radius:8px; }
+
     #startBtn, #pauseBtn {
       background: var(--mint); border:none; color:#000; padding:12px 20px; font-size:1rem; border-radius:18px; cursor:pointer; font-weight:bold; margin:6px;
     }
     #startBtn:active, #pauseBtn:active { background: var(--mint-dark); }
     .website-link { margin-top:10px; }
-    .website-link a {
-      color: var(--mint); text-decoration:none; font-weight:bold; padding:8px 15px; border:2px solid var(--mint); border-radius:15px;
-    }
+    .website-link a { color: var(--mint); text-decoration:none; font-weight:bold; padding:8px 15px; border:2px solid var(--mint); border-radius:15px; }
+
     .modal {
       position:fixed; inset:0; width:100%; height:100%;
       background: rgba(0,0,0,.9); display:none; align-items:center; justify-content:center; z-index:1000; padding:16px;
@@ -67,16 +74,8 @@
       background: var(--mint); color:#000; padding:10px 20px; border-radius:10px; font-size:1.2rem; font-weight:bold; margin:12px 0;
       user-select: all;
     }
-    .claim-btn {
-      background: var(--danger); border:none; color:#fff; padding:12px 20px; font-size:1rem; border-radius:18px; cursor:pointer; margin:8px;
-    }
+    .claim-btn { background: var(--danger); border:none; color:#fff; padding:12px 20px; font-size:1rem; border-radius:18px; cursor:pointer; margin:8px; }
     .muted { color: var(--muted); font-size:.9rem; }
-    /* butonlarda double-tap zoom’u kapat, tıklamayı etkilemez */
-.controls .btn { touch-action: manipulation; }
-
-/* oyun alanında zoom/pinch’i kapat */
-#gameCanvas { touch-action: none; }
-
   </style>
 </head>
 <body>
@@ -94,10 +93,16 @@
     <canvas id="gameCanvas" width="400" height="250"></canvas>
 
     <div class="controls" aria-label="Yön Tuşları">
-      <button class="btn up"   onclick="move('up')"    aria-label="Yukarı">⬆️</button>
-      <button class="btn left" onclick="move('left')"  aria-label="Sol">⬅️</button>
-      <button class="btn right"onclick="move('right')" aria-label="Sağ">➡️</button>
-      <button class="btn down" onclick="move('down')"  aria-label="Aşağı">⬇️</button>
+      <button class="btn up"    data-dir="up">⬆️</button>
+      <button class="btn left"  data-dir="left">⬅️</button>
+
+      <!-- ORTA LOGO -->
+      <div class="logo-center">
+        <img src="logo.png" alt="Saloon N&N" />
+      </div>
+
+      <button class="btn right" data-dir="right">➡️</button>
+      <button class="btn down"  data-dir="down">⬇️</button>
     </div>
 
     <div class="muted">Güzellik ürünlerini topla • Stresten kaç!</div>
@@ -122,6 +127,10 @@
         🎉 Tebrikler! 🎉<br>
         Güzelliğinize güzellik katarak<br>
         <span style="color:#ffff00;">N&N Beauty Özel İndirimi</span> kazandınız!<br><br>
+
+        <!-- LOGO BURADA -->
+        <img src="logo.png" alt="Saloon N&N" style="max-width:120px; margin:10px auto; display:block; border-radius:6px;" />
+
         📱 Detaylar için <strong>@saloon.nn</strong> Instagram adresimize DM!
       </div>
       <button onclick="openInstagram()" class="claim-btn">📱 Instagram'a Git</button><br/>
@@ -142,46 +151,25 @@
   </div>
 
   <script>
-
-// Çift tık zoom’u engelle
-let lastTouchEnd = 0;
-document.addEventListener('touchend', function (event) {
-  const now = Date.now();
-  if (now - lastTouchEnd <= 300) {
-    event.preventDefault();
-  }
-  lastTouchEnd = now;
-}, { passive: false });
-
-    
-    // ====== SPRITES (Twemoji SVG) ======
-    const useSprites = true; // offline ya da CDN istemezsen false yap
+    // ===== SPRITES (Twemoji SVG) =====
+    const useSprites = true; // CDN istemezsen false yap
     const SPRITES = {
-      '💄': '1f484',                // lipstick
-      '💅': '1f485',                // nail polish
-      '🧴': '1f9f4',                // lotion bottle
-      '✨': '2728',                 // sparkles
-      '🧊': '1f9ca',               // ice
-      '⚡': '26a1',                 // high voltage
-      '🏃‍♀️': '1f3c3-200d-2640-fe0f', // woman running
-      '💖': '1f496',               // sparkling heart
-      '👻': '1f47b',               // ghost
-      '💆‍♀️': '1f486-200d-2640-fe0f'  // woman getting massage
+      '💄': '1f484','💅': '1f485','🧴': '1f9f4','✨': '2728','🧊': '1f9ca',
+      '⚡': '26a1','🏃‍♀️': '1f3c3-200d-2640-fe0f','💖':'1f496','👻':'1f47b','💆‍♀️':'1f486-200d-2640-fe0f'
     };
     const spriteCache = new Map();
     function twemojiUrl(code){ return `https://twemoji.maxcdn.com/v/latest/svg/${code}.svg`; }
     async function loadSprites() {
       if (!useSprites) return;
       await Promise.all(Object.entries(SPRITES).map(([emoji, code]) => new Promise(res => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
+        const img = new Image(); img.crossOrigin = 'anonymous';
         img.onload = () => { spriteCache.set(emoji, img); res(); };
-        img.onerror = () => res(); // fallback: emoji text
+        img.onerror = () => res();
         img.src = twemojiUrl(code);
       })));
     }
 
-    // ====== STATE ======
+    // ===== STATE =====
     let gameRunning = false, paused = false, powerMode = false;
     let score = 0, level = 1, lives = 3, best = Number(localStorage.getItem('nn_best')||0);
     let achievementsUnlocked = [];
@@ -197,45 +185,38 @@ document.addEventListener('touchend', function (event) {
       {level:15, code:'CHAMPION50', percent:'50%'}
     ];
 
-    // ====== CANVAS & GRID ======
+    // ===== CANVAS =====
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d', { alpha: false });
-    // Canvas: double-tap zoom’u kapat (butonları etkilemez)
-    let lastTouchEndCanvas = 0;
-    canvas.addEventListener('touchend', function (e) {
-      const now = Date.now();
-      if (now - lastTouchEndCanvas <= 300) {
-        e.preventDefault(); // iOS Safari’de double-tap zoom’u engeller
-  }
-  lastTouchEndCanvas = now;
-}, { passive: false });
-
-// (İsteğe bağlı) iOS pinch başlangıcını da iptal et
-document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive:false });
-
     const DPR = Math.max(1, Math.floor(window.devicePixelRatio || 1));
     function scaleCanvas() {
-      const w = 400, h = 250; // intrinsic
-      canvas.width  = w * DPR;
-      canvas.height = h * DPR;
+      const w = 400, h = 250;
+      canvas.width  = w * DPR; canvas.height = h * DPR;
       ctx.setTransform(DPR,0,0,DPR,0,0);
     }
     scaleCanvas();
-
-    const CELL = 20; // görünür hücre boyutu
+    const CELL = 20;
     let ROWS = Math.floor(canvas.height / DPR / CELL);
     let COLS = Math.floor(canvas.width  / DPR / CELL);
 
-    // ====== ENTITIES ======
+    // --- Canvas'a özel double-tap zoom koruması (butonları etkilemez) ---
+    let lastTouchEndCanvas = 0;
+    canvas.addEventListener('touchend', function (e) {
+      const now = Date.now();
+      if (now - lastTouchEndCanvas <= 300) { e.preventDefault(); }
+      lastTouchEndCanvas = now;
+    }, { passive: false });
+
+    // ===== ENTITIES =====
     let player = { x:1, y:1, lastMove:0 };
     let enemies = [];
     let maze = []; // 0 path, 1 wall, 2 item, 3 power
 
-    // ====== HELPERS ======
+    // ===== HELPERS =====
     function randInt(min, max){ return (min + Math.floor(Math.random()*(max-min+1))); }
     function canMove(x,y){ return x>=0 && x<COLS && y>=0 && y<ROWS && maze[y][x]!==1; }
 
-    // ====== MAZE ======
+    // ===== MAZE =====
     function createMaze() {
       maze = Array.from({length: ROWS}, () => Array(COLS).fill(0));
       for (let r=0;r<ROWS;r++){
@@ -271,91 +252,66 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { 
       }
       for (let r=1;r<=3;r++){ for (let c=1;c<=3;c++){ if (r<ROWS && c<COLS) maze[r][c]=0; } }
     }
-
     function itemsRemaining(){
-      let n=0;
-      for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) if (maze[r][c]===2) n++;
-      return n;
+      let n=0; for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) if (maze[r][c]===2) n++; return n;
     }
 
-    // ====== ENEMIES ======
+    // ===== ENEMIES =====
     function createEnemies() {
       enemies = [];
       const count = Math.min(4, 1 + level);
       for (let i=0;i<count;i++){
         let x,y, tries=0;
-        do {
-          x = randInt(1, COLS-2); y = randInt(1, ROWS-2); tries++;
-        } while ((maze[y][x]!==0 || (x<=3 && y<=3)) && tries<100);
+        do { x = randInt(1, COLS-2); y = randInt(1, ROWS-2); tries++; }
+        while ((maze[y][x]!==0 || (x<=3 && y<=3)) && tries<100);
         if (tries<100){
-          enemies.push({
-            x,y, dir: randInt(0,3), lastMove:0,
-            color: ['#e74c3c','#e67e22','#9b59b6','#f39c12'][i%4]
-          });
+          enemies.push({ x,y, dir: randInt(0,3), lastMove:0,
+            color: ['#e74c3c','#e67e22','#9b59b6','#f39c12'][i%4] });
         }
       }
     }
-
-    function enemyTickInterval() {
-      const base = 420, perLevel = 22, minMs = 120;
-      return Math.max(minMs, base - level * perLevel);
-    }
-
+    function enemyTickInterval(){ const base=420, perLevel=22, minMs=120; return Math.max(minMs, base - level*perLevel); }
     function moveEnemies() {
       if (!gameRunning || paused) return;
       const interval = enemyTickInterval();
       for (const enemy of enemies){
         const now = performance.now();
         if (now - enemy.lastMove < interval) continue;
-
-        const moves = [
-          {dir:0, x:0, y:-1}, {dir:1, x:0, y:1},
-          {dir:2, x:-1, y:0}, {dir:3, x:1, y:0}
-        ];
+        const moves = [{dir:0,x:0,y:-1},{dir:1,x:0,y:1},{dir:2,x:-1,y:0},{dir:3,x:1,y:0}];
         let best=null, bestDist = powerMode ? -1 : 1e9;
-
         for (const mv of moves){
-          const nx = enemy.x + mv.x, ny = enemy.y + mv.y;
+          const nx=enemy.x+mv.x, ny=enemy.y+mv.y;
           if (!canMove(nx,ny)) continue;
-          const dx = player.x - nx, dy = player.y - ny;
-          const d = Math.hypot(dx,dy);
-          if (powerMode) { if (d > bestDist){ bestDist = d; best = mv; } }
-          else { if (d < bestDist){ bestDist = d; best = mv; } }
+          const d = Math.hypot(player.x-nx, player.y-ny);
+          if (powerMode ? (d>bestDist) : (d<bestDist)){ bestDist=d; best=mv; }
         }
-        if (best){
-          enemy.x += best.x; enemy.y += best.y; enemy.dir = best.dir;
-        } else {
-          for (const mv of moves){
-            const nx = enemy.x + mv.x, ny = enemy.y + mv.y;
-            if (canMove(nx,ny)){ enemy.x = nx; enemy.y = ny; enemy.dir = mv.dir; break; }
-          }
+        if (best){ enemy.x += best.x; enemy.y += best.y; enemy.dir = best.dir; }
+        else {
+          for (const mv of moves){ const nx=enemy.x+mv.x, ny=enemy.y+mv.y; if (canMove(nx,ny)){ enemy.x=nx; enemy.y=ny; enemy.dir=mv.dir; break; } }
         }
         enemy.lastMove = now;
       }
     }
 
-    // ====== INPUT ======
+    // ===== INPUT =====
     function move(direction){
       if (!gameRunning || paused) return;
-      let nx = player.x, ny = player.y;
+      let nx=player.x, ny=player.y;
       if (direction==='up') ny--;
       if (direction==='down') ny++;
       if (direction==='left') nx--;
       if (direction==='right') nx++;
       if (canMove(nx,ny)){
-        player.x = nx; player.y = ny;
-
-        if (maze[ny][nx]===2){ score += 10; maze[ny][nx]=0; }
+        player.x=nx; player.y=ny;
+        if (maze[ny][nx]===2){ score+=10; maze[ny][nx]=0; }
         else if (maze[ny][nx]===3){ activatePower(3500); maze[ny][nx]=0; }
-
         checkCollisions();
-        if (itemsRemaining()===0){
-          level++; checkAchievements(); initLevel();
-        }
+        if (itemsRemaining()===0){ level++; checkAchievements(); initLevel(); }
         updateUI();
       }
     }
 
+    // Klavye
     window.addEventListener('keydown', (e)=>{
       const k = e.key.toLowerCase();
       if (['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k)) e.preventDefault();
@@ -366,6 +322,7 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { 
       else if (k==='p') togglePause();
     }, {passive:false});
 
+    // Mobil swipe
     (function addSwipe(el){
       let sx=0, sy=0, t=false;
       el.addEventListener('touchstart',e=>{ if(!e.touches[0])return; t=true; sx=e.touches[0].clientX; sy=e.touches[0].clientY; },{passive:true});
@@ -377,7 +334,17 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { 
       },{passive:true});
     })(canvas);
 
-    // ====== POWER MODE (extend) ======
+    // Kontrol butonları: pointerdown ile gecikmesiz tık
+    const controlButtons = document.querySelectorAll('.controls .btn');
+    controlButtons.forEach(btn => {
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        const dir = btn.dataset.dir;
+        if (dir) move(dir);
+      });
+    });
+
+    // ===== POWER MODE =====
     function activatePower(durationMs){
       const now = performance.now();
       const remaining = Math.max(0, powerEndsAt - now);
@@ -391,20 +358,16 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { 
       }, 50);
     }
 
-    // ====== COLLISIONS ======
+    // ===== COLLISIONS =====
     function checkCollisions(){
       for (let i=enemies.length-1;i>=0;i--){
         const e = enemies[i];
         if (e.x===player.x && e.y===player.y){
-          if (powerMode){
-            enemies.splice(i,1);
-            score += 50;
-          } else {
-            lives--;
-            player.x=1; player.y=1;
+          if (powerMode){ enemies.splice(i,1); score += 50; }
+          else {
+            lives--; player.x=1; player.y=1;
             for (const g of enemies){
-              do { g.x = randInt(2,COLS-3); g.y=randInt(2,ROWS-3); }
-              while (maze[g.y][g.x]!==0);
+              do { g.x = randInt(2,COLS-3); g.y=randInt(2,ROWS-3); } while (maze[g.y][g.x]!==0);
             }
             if (lives<=0){ return gameOver(); }
           }
@@ -412,13 +375,10 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { 
       }
     }
 
-    // ====== ACHIEVEMENTS ======
+    // ===== ACHIEVEMENTS =====
     function checkAchievements(){
       const d = discounts.find(d=>d.level===level);
-      if (d && !achievementsUnlocked.includes(level)){
-        achievementsUnlocked.push(level);
-        showDiscount(d);
-      }
+      if (d && !achievementsUnlocked.includes(level)){ achievementsUnlocked.push(level); showDiscount(d); }
     }
     function showDiscount(d){
       document.getElementById('achievementLevel').textContent = d.level;
@@ -426,12 +386,9 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { 
       document.getElementById('discountModal').style.display = 'flex';
       gameRunning = false;
     }
-    function continueGame(){
-      document.getElementById('discountModal').style.display = 'none';
-      gameRunning = true;
-    }
+    function continueGame(){ document.getElementById('discountModal').style.display = 'none'; gameRunning = true; }
 
-    // ====== FLOW ======
+    // ===== FLOW =====
     async function startGame(){
       if (!spritesLoaded) { await loadSprites(); spritesLoaded = true; }
       score=0; level=1; lives=3; achievementsUnlocked=[]; powerMode=false;
@@ -440,18 +397,10 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { 
       document.getElementById('discountModal').style.display='none';
       document.getElementById('pauseBtn').style.display='inline-block';
       document.getElementById('pauseBtn').textContent='⏸️ Duraklat';
-      paused=false;
-      initLevel(); updateUI();
-      gameRunning = true;
+      paused=false; initLevel(); updateUI(); gameRunning = true;
     }
-    function togglePause(){
-      if (!gameRunning) return;
-      paused = !paused;
-      document.getElementById('pauseBtn').textContent = paused ? '▶️ Devam' : '⏸️ Duraklat';
-    }
-    function initLevel(){
-      createMaze(); createEnemies(); player.x=1; player.y=1;
-    }
+    function togglePause(){ if (!gameRunning) return; paused = !paused; document.getElementById('pauseBtn').textContent = paused ? '▶️ Devam' : '⏸️ Duraklat'; }
+    function initLevel(){ createMaze(); createEnemies(); player.x=1; player.y=1; }
     function gameOver(){
       gameRunning=false; paused=false;
       document.getElementById('pauseBtn').style.display='none';
@@ -462,69 +411,44 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { 
       document.getElementById('startBtn').style.display='inline-block';
       updateUI();
     }
+    function openInstagram(){ window.open('https://www.instagram.com/saloon.nn?igsh=Nm91bDZvYWhvOWlw','_blank','noopener'); }
+    function updateUI(){ scoreEl.textContent=score; levelEl.textContent=level; livesEl.textContent=lives; bestEl.textContent=best; }
 
-    function openInstagram(){
-      window.open('https://www.instagram.com/saloon.nn?igsh=Nm91bDZvYWhvOWlw','_blank','noopener');
-    }
-
-    function updateUI(){
-      document.getElementById('score').textContent = score;
-      document.getElementById('level').textContent = level;
-      document.getElementById('lives').textContent = lives;
-      document.getElementById('best').textContent  = best;
-    }
-
-    // ====== DRAW HELPERS (sprites) ======
+    // ===== DRAW HELPERS =====
     function drawSpriteOrEmoji(emoji, x, y, sizePx) {
       const img = spriteCache.get(emoji);
-      if (img) {
-        const s = sizePx;
-        ctx.imageSmoothingEnabled = true;
-        ctx.drawImage(img, x - s/2, y - s/2, s, s);
-      } else {
-        ctx.font = `${Math.floor(sizePx*0.9)}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#fff';
-        ctx.fillText(emoji, x, y+1);
-      }
+      if (img) { const s=sizePx; ctx.imageSmoothingEnabled=true; ctx.drawImage(img, x - s/2, y - s/2, s, s); }
+      else { ctx.font = `${Math.floor(sizePx*0.9)}px Arial`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#fff'; ctx.fillText(emoji, x, y+1); }
     }
-    function drawItemAt(emoji, cellX, cellY){
-      const cx = cellX*CELL + CELL/2, cy = cellY*CELL + CELL/2;
-      drawSpriteOrEmoji(emoji, cx, cy, Math.min(18, CELL*0.9));
-    }
-    function drawPowerAt(emoji, cellX, cellY){
-      const cx = cellX*CELL + CELL/2, cy = cellY*CELL + CELL/2;
-      drawSpriteOrEmoji(emoji, cx, cy, Math.min(20, CELL*0.95));
-    }
+    function drawItemAt(emoji, cellX, cellY){ const cx=cellX*CELL + CELL/2, cy=cellY*CELL + CELL/2; drawSpriteOrEmoji(emoji, cx, cy, Math.min(18, CELL*0.9)); }
+    function drawPowerAt(emoji, cellX, cellY){ const cx=cellX*CELL + CELL/2, cy=cellY*CELL + CELL/2; drawSpriteOrEmoji(emoji, cx, cy, Math.min(20, CELL*0.95)); }
     function drawGhostAt(enemy){
-      const ex = enemy.x*CELL + CELL/2, ey = enemy.y*CELL + CELL/2;
-      if (powerMode) {
-        ctx.fillStyle='#666';
-        ctx.beginPath(); ctx.arc(ex,ey,5,0,Math.PI*2); ctx.fill();
+      const ex=enemy.x*CELL + CELL/2, ey=enemy.y*CELL + CELL/2;
+      if (powerMode){
+        ctx.fillStyle='#666'; ctx.beginPath(); ctx.arc(ex,ey,5,0,Math.PI*2); ctx.fill();
         drawSpriteOrEmoji('👻', ex, ey, 12);
       } else {
-        ctx.shadowColor = enemy.color; ctx.shadowBlur = 8;
-        ctx.fillStyle = enemy.color;
-        ctx.beginPath(); ctx.arc(ex,ey,7,0,Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.shadowColor=enemy.color; ctx.shadowBlur=8; ctx.fillStyle=enemy.color;
+        ctx.beginPath(); ctx.arc(ex,ey,7,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
         drawSpriteOrEmoji('👻', ex, ey, 12);
       }
     }
     function drawPlayer(){
-      const px = player.x*CELL + CELL/2, py = player.y*CELL + CELL/2;
+      const px=player.x*CELL + CELL/2, py=player.y*CELL + CELL/2;
       ctx.fillStyle = powerMode ? '#ffff00' : '#ff6b9d';
       ctx.beginPath(); ctx.arc(px,py,8,0,Math.PI*2); ctx.fill();
       drawSpriteOrEmoji('💆‍♀️', px, py, 14);
     }
 
-    // ====== RENDER ======
+    // ===== RENDER =====
+    const scoreEl = document.getElementById('score');
+    const levelEl = document.getElementById('level');
+    const livesEl = document.getElementById('lives');
+    const bestEl  = document.getElementById('best');
+
     function draw(){
       ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width/DPR,canvas.height/DPR);
-
-      // watermark
-      ctx.save(); ctx.globalAlpha=0.08; ctx.fillStyle='#4ecdc4';
-      ctx.font='30px Arial'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
+      ctx.save(); ctx.globalAlpha=0.08; ctx.fillStyle='#4ecdc4'; ctx.font='30px Arial'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
       ctx.fillText('N&N', (canvas.width/DPR)/2, (canvas.height/DPR)/2); ctx.restore();
 
       if (!gameRunning){
@@ -538,57 +462,36 @@ document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { 
         return;
       }
 
-      // maze (daha net kontur)
       for (let r=0;r<ROWS;r++){
         for (let c=0;c<COLS;c++){
           const x=c*CELL, y=r*CELL;
           if (maze[r][c]===1){
-            ctx.fillStyle = '#193f42';
-            ctx.fillRect(x,y,CELL,CELL);
-            ctx.strokeStyle = '#4ecdc4';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x+1,y+1,CELL-2,CELL-2);
+            ctx.fillStyle = '#193f42'; ctx.fillRect(x,y,CELL,CELL);
+            ctx.strokeStyle = '#4ecdc4'; ctx.lineWidth = 2; ctx.strokeRect(x+1,y+1,CELL-2,CELL-2);
           } else if (maze[r][c]===2){
-            const it = items[(r+c)%items.length];
-            drawItemAt(it, c, r);
+            const it = items[(r+c)%items.length]; drawItemAt(it, c, r);
           } else if (maze[r][c]===3){
-            const pw = powers[(r+c)%powers.length];
-            drawPowerAt(pw, c, r);
+            const pw = powers[(r+c)%powers.length]; drawPowerAt(pw, c, r);
           }
         }
       }
 
-      // player + enemies
       drawPlayer();
       for (const enemy of enemies) drawGhostAt(enemy);
     }
 
-    // ====== LOOP ======
+    // ===== LOOP =====
     function tick(){
-      if (gameRunning && !paused){
-        moveEnemies();
-        checkCollisions();
-      }
-      draw();
-      requestAnimationFrame(tick);
+      if (gameRunning && !paused){ moveEnemies(); checkCollisions(); }
+      draw(); requestAnimationFrame(tick);
     }
     draw(); tick();
 
-    // modal dışına tıklayınca kapatma (discount)
-    for (const id of ['discountModal']){
-      const m = document.getElementById(id);
+    // Discount modal dışına tıklayınca devam
+    (function(){
+      const m = document.getElementById('discountModal');
       m.addEventListener('click', (e)=>{ if (e.target===m){ continueGame(); } });
-    }
-
-    // (opsiyonel) farklı DPR değişimlerinde yeniden ölçekleme
-    // Not: bazı tarayıcılarda matchMedia 'change' desteklemez; sorun değil.
-    try {
-      const mm = window.matchMedia(`(resolution: ${DPR}dppx)`);
-      mm.addEventListener && mm.addEventListener('change', scaleCanvas);
-    } catch(_){}
+    })();
   </script>
 </body>
 </html>
-
-
-
