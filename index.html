@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <!-- Mobilde yakınlaştırmayı kullanıcı başlatmasın, çift-tık zoom butonları etkilemesin -->
+  <!-- Mobilde kullanıcı ölçeklemesini sınırla; butonlarda tıklama normal kalsın -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Saloon N&N Beauty Game</title>
   <style>
@@ -29,12 +29,12 @@
     }
     .info-item { background: rgba(78,205,196,.2); padding:5px 10px; border-radius:10px; border:2px solid var(--mint); }
 
-    /* Canvas: sadece oyun alanında zoom/pinch kapalı */
+    /* Canvas: yalnızca oyun alanında zoom/pinch kapalı */
     #gameCanvas {
       border:3px solid var(--mint); border-radius:10px; background:#000;
       display:block; margin:12px auto; width:90vw; max-width:420px; height:auto;
       aspect-ratio: 400 / 250;
-      touch-action: none; /* sadece canvas'ta kapalı */
+      touch-action: none;
     }
 
     .controls {
@@ -45,7 +45,8 @@
       width:52px; height:52px; background:var(--mint); border:none; border-radius:50%;
       color:#000; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:bold;
       box-shadow: 0 4px 12px rgba(0,0,0,.25);
-      touch-action: manipulation; /* butonda double-tap zoom yok, tıklama normal */
+      touch-action: manipulation; /* double-tap zoom yapma, tıklamayı bozma */
+      -webkit-tap-highlight-color: transparent;
     }
     .btn:active { background: var(--mint-dark); transform: translateY(1px); }
     .up { grid-column:2; grid-row:1; } .left { grid-column:1; grid-row:2; }
@@ -93,16 +94,16 @@
     <canvas id="gameCanvas" width="400" height="250"></canvas>
 
     <div class="controls" aria-label="Yön Tuşları">
-      <button class="btn up"    data-dir="up">⬆️</button>
-      <button class="btn left"  data-dir="left">⬅️</button>
+      <button class="btn up"    onclick="move('up')"    data-dir="up">⬆️</button>
+      <button class="btn left"  onclick="move('left')"  data-dir="left">⬅️</button>
 
       <!-- ORTA LOGO -->
       <div class="logo-center">
         <img src="logo.png" alt="Saloon N&N" />
       </div>
 
-      <button class="btn right" data-dir="right">➡️</button>
-      <button class="btn down"  data-dir="down">⬇️</button>
+      <button class="btn right" onclick="move('right')" data-dir="right">➡️</button>
+      <button class="btn down"  onclick="move('down')"  data-dir="down">⬇️</button>
     </div>
 
     <div class="muted">Güzellik ürünlerini topla • Stresten kaç!</div>
@@ -322,7 +323,7 @@
       else if (k==='p') togglePause();
     }, {passive:false});
 
-    // Mobil swipe
+    // Mobil swipe (canvas üzerinde)
     (function addSwipe(el){
       let sx=0, sy=0, t=false;
       el.addEventListener('touchstart',e=>{ if(!e.touches[0])return; t=true; sx=e.touches[0].clientX; sy=e.touches[0].clientY; },{passive:true});
@@ -334,15 +335,19 @@
       },{passive:true});
     })(canvas);
 
-    // Kontrol butonları: pointerdown ile gecikmesiz tık
-    const controlButtons = document.querySelectorAll('.controls .btn');
-    controlButtons.forEach(btn => {
-      btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
+    // Kontrol butonları: touchstart + click (geniş uyumluluk)
+    (function bindControls(){
+      const btns = document.querySelectorAll('.controls .btn');
+      btns.forEach(btn => {
         const dir = btn.dataset.dir;
-        if (dir) move(dir);
+        btn.addEventListener('touchstart', function(e){
+          e.preventDefault(); if (dir) move(dir);
+        }, {passive:false});
+        btn.addEventListener('click', function(){
+          if (dir) move(dir);
+        });
       });
-    });
+    })();
 
     // ===== POWER MODE =====
     function activatePower(durationMs){
@@ -412,7 +417,12 @@
       updateUI();
     }
     function openInstagram(){ window.open('https://www.instagram.com/saloon.nn?igsh=Nm91bDZvYWhvOWlw','_blank','noopener'); }
-    function updateUI(){ scoreEl.textContent=score; levelEl.textContent=level; livesEl.textContent=lives; bestEl.textContent=best; }
+    function updateUI(){
+      document.getElementById('score').textContent = score;
+      document.getElementById('level').textContent = level;
+      document.getElementById('lives').textContent = lives;
+      document.getElementById('best').textContent  = best;
+    }
 
     // ===== DRAW HELPERS =====
     function drawSpriteOrEmoji(emoji, x, y, sizePx) {
@@ -441,11 +451,6 @@
     }
 
     // ===== RENDER =====
-    const scoreEl = document.getElementById('score');
-    const levelEl = document.getElementById('level');
-    const livesEl = document.getElementById('lives');
-    const bestEl  = document.getElementById('best');
-
     function draw(){
       ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width/DPR,canvas.height/DPR);
       ctx.save(); ctx.globalAlpha=0.08; ctx.fillStyle='#4ecdc4'; ctx.font='30px Arial'; ctx.textAlign='center'; ctx.textBaseline='alphabetic';
@@ -492,6 +497,12 @@
       const m = document.getElementById('discountModal');
       m.addEventListener('click', (e)=>{ if (e.target===m){ continueGame(); } });
     })();
+
+    // UI refs
+    const scoreEl = document.getElementById('score');
+    const levelEl = document.getElementById('level');
+    const livesEl = document.getElementById('lives');
+    const bestEl  = document.getElementById('best');
   </script>
 </body>
 </html>
