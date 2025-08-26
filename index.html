@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Saloon N&N Beauty Game</title>
   <style>
     :root {
@@ -134,6 +134,16 @@
       <button onclick="continueGame()" style="background:#666; border:none; color:#fff; padding:8px 16px; border-radius:10px; cursor:pointer; margin-top:10px;">Devam Et</button>
     </div>
   </div>
+  
+// Çift tık zoom’u engelle
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function (event) {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) {
+    event.preventDefault();
+  }
+  lastTouchEnd = now;
+}, { passive: false });
 
   <script>
     // ====== SPRITES (Twemoji SVG) ======
@@ -558,3 +568,4 @@
   </script>
 </body>
 </html>
+
