@@ -134,7 +134,9 @@
       <button onclick="continueGame()" style="background:#666; border:none; color:#fff; padding:8px 16px; border-radius:10px; cursor:pointer; margin-top:10px;">Devam Et</button>
     </div>
   </div>
-  
+
+  <script>
+
 // Çift tık zoom’u engelle
 let lastTouchEnd = 0;
 document.addEventListener('touchend', function (event) {
@@ -145,7 +147,7 @@ document.addEventListener('touchend', function (event) {
   lastTouchEnd = now;
 }, { passive: false });
 
-  <script>
+    
     // ====== SPRITES (Twemoji SVG) ======
     const useSprites = true; // offline ya da CDN istemezsen false yap
     const SPRITES = {
@@ -568,4 +570,5 @@ document.addEventListener('touchend', function (event) {
   </script>
 </body>
 </html>
+
 
