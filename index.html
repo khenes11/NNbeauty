@@ -71,6 +71,12 @@
       background: var(--danger); border:none; color:#fff; padding:12px 20px; font-size:1rem; border-radius:18px; cursor:pointer; margin:8px;
     }
     .muted { color: var(--muted); font-size:.9rem; }
+    /* butonlarda double-tap zoom’u kapat, tıklamayı etkilemez */
+.controls .btn { touch-action: manipulation; }
+
+/* oyun alanında zoom/pinch’i kapat */
+#gameCanvas { touch-action: none; }
+
   </style>
 </head>
 <body>
@@ -194,6 +200,19 @@ document.addEventListener('touchend', function (event) {
     // ====== CANVAS & GRID ======
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d', { alpha: false });
+    // Canvas: double-tap zoom’u kapat (butonları etkilemez)
+    let lastTouchEndCanvas = 0;
+    canvas.addEventListener('touchend', function (e) {
+      const now = Date.now();
+      if (now - lastTouchEndCanvas <= 300) {
+        e.preventDefault(); // iOS Safari’de double-tap zoom’u engeller
+  }
+  lastTouchEndCanvas = now;
+}, { passive: false });
+
+// (İsteğe bağlı) iOS pinch başlangıcını da iptal et
+document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive:false });
+
     const DPR = Math.max(1, Math.floor(window.devicePixelRatio || 1));
     function scaleCanvas() {
       const w = 400, h = 250; // intrinsic
@@ -570,5 +589,6 @@ document.addEventListener('touchend', function (event) {
   </script>
 </body>
 </html>
+
 
 
